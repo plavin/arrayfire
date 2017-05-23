@@ -266,7 +266,8 @@ namespace kernel
             for (int k = 1; k < 4; k++) tmp.strides[k] = tmp.strides[k - 1] * tmp.dims[k - 1];
 
             int tmp_elements = tmp.strides[3] * tmp.dims[3];
-            tmp.ptr = memAlloc<To>(tmp_elements);
+            auto tmp_alloc = memAlloc<To>(tmp_elements);
+            tmp.ptr = tmp_alloc.get();
 
             scan_dim_launcher<Ti, To, op, dim, false, inclusive_scan>(out, tmp, in,
                                                       threads_y,
@@ -288,8 +289,6 @@ namespace kernel
 
             blocks_all[dim] = bdim;
             bcast_dim_launcher<To, op, dim>(out, tmp, threads_y, blocks_all);
-
-            memFree(tmp.ptr);
         }
     }
 

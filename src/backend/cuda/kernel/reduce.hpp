@@ -148,13 +148,14 @@ namespace kernel
         blocks_dim[dim] = divup(in.dims[dim], threads_y * REPEAT);
 
         Param<To> tmp = out;
-
+        uptr<To> tmp_alloc;
         if (blocks_dim[dim] > 1) {
             int tmp_elements = 1;
             tmp.dims[dim] = blocks_dim[dim];
 
             for (int k = 0; k < 4; k++) tmp_elements *= tmp.dims[k];
-            tmp.ptr = memAlloc<To>(tmp_elements);
+            tmp_alloc = memAlloc<To>(tmp_elements);
+            tmp.ptr = tmp_alloc.get();
 
             for (int k = dim + 1; k < 4; k++) tmp.strides[k] *= blocks_dim[dim];
         }
@@ -172,7 +173,6 @@ namespace kernel
                                                            change_nan, nanval);
             }
 
-            memFree(tmp.ptr);
         }
 
     }
@@ -328,11 +328,10 @@ namespace kernel
         uint blocks_y = divup(in.dims[1], threads_y);
 
         Param<To> tmp = out;
+        uptr<To> tmp_alloc;
         if (blocks_x > 1) {
-            tmp.ptr = memAlloc<To>(blocks_x *
-                                   in.dims[1] *
-                                   in.dims[2] *
-                                   in.dims[3]);
+            tmp_alloc = memAlloc<To>(blocks_x * in.dims[1] * in.dims[2] * in.dims[3]);
+            tmp.ptr = tmp_alloc.get();
 
             tmp.dims[0] = blocks_x;
             for (int k = 1; k < 4; k++) tmp.strides[k] *= blocks_x;
@@ -351,7 +350,6 @@ namespace kernel
                                                         change_nan, nanval);
             }
 
-            memFree(tmp.ptr);
         }
     }
 
@@ -405,7 +403,8 @@ namespace kernel
 
             int tmp_elements = tmp.strides[3] * tmp.dims[3];
 
-            tmp.ptr = memAlloc<To>(tmp_elements);
+            auto tmp_alloc = memAlloc<To>(tmp_elements);
+            tmp.ptr = tmp_alloc.get();
             reduce_first_launcher<Ti, To, op>(tmp, in, blocks_x, blocks_y, threads_x,
                                               change_nan, nanval);
 
@@ -415,7 +414,6 @@ namespace kernel
             CUDA_CHECK(cudaMemcpyAsync(h_ptr_raw, tmp.ptr, tmp_elements * sizeof(To),
                        cudaMemcpyDeviceToHost, cuda::getActiveStream()));
             CUDA_CHECK(cudaStreamSynchronize(cuda::getActiveStream()));
-            memFree(tmp.ptr);
 
             Binary<To, op> reduce;
             To out = reduce.init();

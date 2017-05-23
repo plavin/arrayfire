@@ -40,14 +40,14 @@ namespace cuda
     template<typename T>
     Array<T>::Array(af::dim4 dims) :
         info(getActiveDeviceId(), dims, 0, calcStrides(dims), (af_dtype)dtype_traits<T>::af_type),
-        data(memAlloc<T>(dims.elements()), memFree<T>), data_dims(dims),
+        data(memAlloc<T>(dims.elements()).release(), memFree<T>), data_dims(dims),
         node(bufferNodePtr<T>()), ready(true), owner(true)
     {}
 
     template<typename T>
     Array<T>::Array(af::dim4 dims, const T * const in_data, bool is_device, bool copy_device) :
         info(getActiveDeviceId(), dims, 0, calcStrides(dims), (af_dtype)dtype_traits<T>::af_type),
-        data(((is_device & !copy_device) ? (T *)in_data : memAlloc<T>(dims.elements())), memFree<T>),
+        data(((is_device & !copy_device) ? (T *)in_data : memAlloc<T>(dims.elements()).release()), memFree<T>),
         data_dims(dims),
         node(bufferNodePtr<T>()), ready(true), owner(true)
     {
@@ -99,7 +99,7 @@ namespace cuda
     Array<T>::Array(af::dim4 dims, af::dim4 strides, dim_t offset_,
                     const T * const in_data, bool is_device) :
         info(getActiveDeviceId(), dims, offset_, strides, (af_dtype)dtype_traits<T>::af_type),
-        data(is_device ? (T*)in_data : memAlloc<T>(info.total()), memFree<T>),
+        data(is_device ? (T*)in_data : memAlloc<T>(info.total()).release(), memFree<T>),
         data_dims(dims),
         node(bufferNodePtr<T>()),
         ready(true),
@@ -119,7 +119,7 @@ namespace cuda
         if (isReady()) return;
 
         this->setId(getActiveDeviceId());
-        data = shared_ptr<T>(memAlloc<T>(elements()),
+        data = shared_ptr<T>(memAlloc<T>(elements()).release(),
                              memFree<T>);
 
         Param<T> res;
@@ -166,7 +166,7 @@ namespace cuda
             }
 
             array->setId(getActiveDeviceId());
-            array->data = shared_ptr<T>(memAlloc<T>(array->elements()),
+            array->data = shared_ptr<T>(memAlloc<T>(array->elements()).release(),
                                         memFree<T>);
 
             Param<T> res;

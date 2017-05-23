@@ -34,7 +34,8 @@ void sort0ByKeyIterative(Array<Tk> okey, Array<Tv> oval, bool isAscending)
 
     dim_t size = okey.dims()[0];
     size_t bytes = size * sizeof(CurrentPair);
-    CurrentPair *pairKeyVal = (CurrentPair *)memAlloc<char>(bytes);
+    auto pairKeyVal_ = memAlloc<char>(bytes);
+    CurrentPair *pairKeyVal = (CurrentPair *)pairKeyVal_.get();
 
     for(dim_t w = 0; w < okey.dims()[3]; w++) {
         dim_t okeyW = w * okey.strides()[3];
@@ -70,7 +71,6 @@ void sort0ByKeyIterative(Array<Tk> okey, Array<Tv> oval, bool isAscending)
         }
     }
 
-    memFree((char *)pairKeyVal);
     return;
 }
 
@@ -84,11 +84,10 @@ void sortByKeyBatched(Array<Tk> okey, Array<Tv> oval, const int dim, bool isAsce
     tileDims[dim] = inDims[dim];
     seqDims[dim] = 1;
 
-    uint* key = memAlloc<uint>(inDims.elements());
+    auto key = memAlloc<uint>(inDims.elements());
     // IOTA
     {
         af::dim4 dims    = inDims;
-        uint* out        = key;
         af::dim4 strides(1);
         for(int i = 1; i < 4; i++)
             strides[i] = strides[i-1] * dims[i-1];
@@ -104,7 +103,7 @@ void sortByKeyBatched(Array<Tk> okey, Array<Tv> oval, const int dim, bool isAsce
                     uint okeyY = okeyZ + (y % seqDims[1]) * seqDims[0];
                     for(dim_t x = 0; x < dims[0]; x++) {
                         dim_t id = offWZY + x;
-                        out[id] = okeyY + (x % seqDims[0]);
+                        key[id] = okeyY + (x % seqDims[0]);
                     }
                 }
             }
@@ -118,13 +117,12 @@ void sortByKeyBatched(Array<Tk> okey, Array<Tv> oval, const int dim, bool isAsce
     typedef KeyIndexPair<Tk, Tv> CurrentTuple;
     size_t size = okey.elements();
     size_t bytes = okey.elements() * sizeof(CurrentTuple);
-    CurrentTuple *tupleKeyValIdx = (CurrentTuple *)memAlloc<char>(bytes);
+    auto tupleKeyValIdx_ = memAlloc<char>(bytes);
+    CurrentTuple *tupleKeyValIdx = (CurrentTuple *)tupleKeyValIdx_.get();
 
     for(unsigned i = 0; i < size; i++) {
         tupleKeyValIdx[i] = std::make_tuple(okey_ptr[i], oval_ptr[i], key[i]);
     }
-
-    memFree(key); // key is no longer required
 
     if(isAscending) {
       std::stable_sort(tupleKeyValIdx, tupleKeyValIdx + size, KIPCompareV<Tk, Tv, true>());
@@ -140,7 +138,6 @@ void sortByKeyBatched(Array<Tk> okey, Array<Tv> oval, const int dim, bool isAsce
         oval_ptr[x] = std::get<1>(tupleKeyValIdx[x]);
     }
 
-    memFree((char *)tupleKeyValIdx);
     return;
 }
 

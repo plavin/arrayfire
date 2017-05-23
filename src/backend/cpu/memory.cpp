@@ -21,6 +21,9 @@
 #define AF_CPU_MEM_DEBUG 0
 #endif
 
+using std::unique_ptr;
+using std::function;
+
 namespace cpu
 {
 void setMemStepSize(size_t step_bytes)
@@ -53,18 +56,21 @@ void printMemInfo(const char *msg, const int device)
     memoryManager().printInfo(msg, device);
 }
 
+  
+
 template<typename T>
-T* memAlloc(const size_t &elements)
+unique_ptr<T[], function<void(T *)>>
+memAlloc(const size_t &elements)
 {
     T *ptr = nullptr;
 
     try {
-        ptr = (T *)memoryManager().alloc(elements * sizeof(T), false);
+      ptr = (T *)memoryManager().alloc(elements * sizeof(T), false);
     } catch(...) {
-        getQueue().sync();
-        ptr = (T *)memoryManager().alloc(elements * sizeof(T), false);
+      getQueue().sync();
+      ptr = (T *)memoryManager().alloc(elements * sizeof(T), false);
     }
-    return ptr;
+    return unique_ptr<T[], function<void(T *)>>(ptr, memFree<T>);
 }
 
 void* memAllocUser(const size_t &bytes)
@@ -131,12 +137,12 @@ bool checkMemoryLimit()
     return memoryManager().checkMemoryLimit();
 }
 
-#define INSTANTIATE(T)                                      \
-    template T* memAlloc(const size_t &elements);           \
-    template void memFree(T* ptr);                          \
-    template T* pinnedAlloc(const size_t &elements);        \
-    template void pinnedFree(T* ptr);                       \
-
+#define INSTANTIATE(T)                                                                        \
+    template std::unique_ptr<T[], std::function<void(T *)>> memAlloc(const size_t &elements); \
+    template void memFree(T* ptr);                                                            \
+    template T* pinnedAlloc(const size_t &elements);                                          \
+    template void pinnedFree(T* ptr);                                                         \
+ 
 INSTANTIATE(float)
 INSTANTIATE(cfloat)
 INSTANTIATE(double)

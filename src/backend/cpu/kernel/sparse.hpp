@@ -135,7 +135,8 @@ void csr_coo(Array<T> ovalues, Array<int> orowIdx, Array<int> ocolIdx,
     typedef SpKeyIndexPair<T> CurrentPair;
     int size = ovalues.dims()[0];
     size_t bytes = size * sizeof(CurrentPair);
-    CurrentPair *pairKeyVal = (CurrentPair *)memAlloc<char>(bytes);
+    auto pairKeyVal_ = memAlloc<char>(bytes);
+    CurrentPair *pairKeyVal = (CurrentPair*)pairKeyVal_.get();
 
     for(int x = 0; x < size; x++) {
        pairKeyVal[x] = std::make_tuple(icPtr[x], ivPtr[x], orPtr[x]);
@@ -147,7 +148,6 @@ void csr_coo(Array<T> ovalues, Array<int> orowIdx, Array<int> ocolIdx,
         std::tie(ocPtr[x], ovPtr[x], orPtr[x]) = pairKeyVal[x];
     }
 
-    memFree((char *)pairKeyVal);
 }
 
 template<typename T>
@@ -167,7 +167,9 @@ void coo_csr(Array<T> ovalues, Array<int> orowIdx, Array<int> ocolIdx,
     typedef SpKeyIndexPair<T> CurrentPair;
     int size = ovalues.dims()[0];
     size_t bytes = size * sizeof(CurrentPair);
-    CurrentPair *pairKeyVal = (CurrentPair *)memAlloc<char>(bytes);
+
+    auto pairKeyVal_ = memAlloc<char>(bytes);
+    CurrentPair *pairKeyVal = (CurrentPair*)pairKeyVal_.get();
 
     for(int x = 0; x < size; x++) {
        pairKeyVal[x] = std::make_tuple(irPtr[x], ivPtr[x], icPtr[x]);
@@ -187,7 +189,6 @@ void coo_csr(Array<T> ovalues, Array<int> orowIdx, Array<int> ocolIdx,
         orPtr[x] += orPtr[x - 1];
     }
 
-    memFree((char *)pairKeyVal);
 }
 
 }

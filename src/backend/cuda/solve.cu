@@ -172,7 +172,7 @@ Array<T> solveLU(const Array<T> &A, const Array<int> &pivot,
 
     Array< T > B = copyArray<T>(b);
 
-    int *info = memAlloc<int>(1);
+    auto info = memAlloc<int>(1);
 
     CUSOLVER_CHECK(getrs_func<T>()(solverDnHandle(),
                                    CUBLAS_OP_N,
@@ -180,9 +180,8 @@ Array<T> solveLU(const Array<T> &A, const Array<int> &pivot,
                                    A.get(), A.strides()[1],
                                    pivot.get(),
                                    B.get(), B.strides()[1],
-                                   info));
+                                   info.get()));
 
-    memFree(info);
     return B;
 }
 
@@ -197,7 +196,7 @@ Array<T> generalSolve(const Array<T> &a, const Array<T> &b)
     Array<T> B = copyArray<T>(b);
     Array<int> pivot = lu_inplace(A, false);
 
-    int *info = memAlloc<int>(1);
+    auto info = memAlloc<int>(1);
 
     CUSOLVER_CHECK(getrs_func<T>()(solverDnHandle(),
                                    CUBLAS_OP_N,
@@ -205,8 +204,7 @@ Array<T> generalSolve(const Array<T> &a, const Array<T> &b)
                                    A.get(), A.strides()[1],
                                    pivot.get(),
                                    B.get(), B.strides()[1],
-                                   info));
-    memFree(info);
+                                   info.get()));
     return B;
 }
 
@@ -247,17 +245,17 @@ Array<T> leastSquares(const Array<T> &a, const Array<T> &b)
                                                  A.get(), A.strides()[1],
                                                  &lwork));
 
-        T *workspace = memAlloc<T>(lwork);
+        auto workspace = memAlloc<T>(lwork);
         Array<T> t = createEmptyArray<T>(af::dim4(min(M, N), 1, 1, 1));
-        int *info = memAlloc<int>(1);
+        auto info = memAlloc<int>(1);
 
         // In place Perform in place QR
         CUSOLVER_CHECK(geqrf_solve_func<T>()(solverDnHandle(),
                                              A.dims()[0], A.dims()[1],
                                              A.get(), A.strides()[1],
                                              t.get(),
-                                             workspace, lwork,
-                                             info));
+                                             workspace.get(), lwork,
+                                             info.get()));
 
         // R1 = R(seq(M), seq(M));
         A.resetDims(dim4(M, M));
@@ -278,11 +276,8 @@ Array<T> leastSquares(const Array<T> &a, const Array<T> &b)
                                            A.get(), A.strides()[1],
                                            t.get(),
                                            B.get(), B.strides()[1],
-                                           workspace, lwork,
-                                           info));
-
-        memFree(workspace);
-        memFree(info);
+                                           workspace.get(), lwork,
+                                           info.get()));
 
     } else if (M > N) {
 
@@ -305,17 +300,17 @@ Array<T> leastSquares(const Array<T> &a, const Array<T> &b)
                                                  A.get(), A.strides()[1],
                                                  &lwork));
 
-        T *workspace = memAlloc<T>(lwork);
+        auto workspace = memAlloc<T>(lwork);
         Array<T> t = createEmptyArray<T>(af::dim4(min(M, N), 1, 1, 1));
-        int *info = memAlloc<int>(1);
+        auto info = memAlloc<int>(1);
 
         // In place Perform in place QR
         CUSOLVER_CHECK(geqrf_solve_func<T>()(solverDnHandle(),
                                              A.dims()[0], A.dims()[1],
                                              A.get(), A.strides()[1],
                                              t.get(),
-                                             workspace, lwork,
-                                             info));
+                                             workspace.get(), lwork,
+                                             info.get()));
 
         // matmul(Q1, B)
         CUSOLVER_CHECK(mqr_solve_func<T>()(solverDnHandle(),
@@ -325,16 +320,13 @@ Array<T> leastSquares(const Array<T> &a, const Array<T> &b)
                                            A.get(), A.strides()[1],
                                            t.get(),
                                            B.get(), B.strides()[1],
-                                           workspace, lwork,
-                                           info));
-
+                                           workspace.get(), lwork,
+                                           info.get()));
         // tri_solve(R1, Bt)
         A.resetDims(dim4(N, N));
         B.resetDims(dim4(N, K));
         trsm(A, B, AF_MAT_NONE, true, true, false);
 
-        memFree(workspace);
-        memFree(info);
     }
     return B;
 }
